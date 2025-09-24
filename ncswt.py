@@ -181,7 +181,7 @@ if not df.empty:
                             entry_time = row['เวลาเข้า'].strftime('%H:%M')
                             exit_time = row['เวลาออก'].strftime('%H:%M')
                             
-                            label = f"วันที่: {row['วันที่'].strftime('%d/%m/%Y')} | {entry_time} - {exit_time} ({row['ข้อยกเว้น']})"
+                            label = f"วันที่: {row['วันที่'].strftime('%d/%m/%Y')} {entry_time} - {exit_time} ({row['ข้อยกเว้น']})"
                             date_list.append(label)
                         st.write(date_list)
 
