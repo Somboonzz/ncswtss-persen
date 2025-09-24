@@ -85,6 +85,7 @@ if not df.empty:
 
     df_filtered = df.copy()
 
+    st.markdown("### ตัวกรองข้อมูล")
     # --- Filter ปี
     years = ["-- แสดงทั้งหมด --"] + sorted(df["ปี"].dropna().unique(), reverse=True)
     selected_year = st.selectbox("📆 เลือกปี", years)
@@ -175,8 +176,8 @@ if not df.empty:
 
                 if not dates.empty:
                     total_days = dates["ข้อยกเว้น"].apply(leave_days).sum()
-                    with st.expander(f"{leave} ({total_days} วัน)"):
-                        st.markdown("#### รายการวันที่")
+                    with st.expander(f"รายการวันที่ ({total_days} วัน)"):
+                        st.markdown("#### รายละเอียด")
                         date_list = []
                         for _, row in dates.iterrows():
                             entry_time = row['เวลาเข้า'].strftime('%H:%M')
