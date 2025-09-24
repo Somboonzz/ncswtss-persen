@@ -8,7 +8,7 @@ import pytz
 st.set_page_config(page_title="HR Dashboard", layout="wide")
 
 # -----------------------------
-# โซนเวลาไทย
+# Thai Timezone
 # -----------------------------
 bangkok_tz = pytz.timezone("Asia/Bangkok")
 
@@ -26,9 +26,9 @@ def format_thai_month(period):
     return f"{month} {year}"
 
 # -----------------------------
-# โหลดไฟล์ Excel
+# Load Excel File
 # -----------------------------
-@st.cache_data(ttl=300)  # cache 5 นาที (300 วินาที)
+@st.cache_data(ttl=300)  # cache for 5 minutes (300 seconds)
 def load_data(file_path="attendances.xlsx"):
     try:
         if file_path and os.path.exists(file_path):
@@ -44,14 +44,14 @@ def load_data(file_path="attendances.xlsx"):
 df = load_data()
 
 # -----------------------------
-# ปุ่ม Refresh
+# Refresh Button
 # -----------------------------
 if st.button("🔄 Refresh ข้อมูล (Manual)"):
-    st.cache_data.clear()  # ล้าง cache
+    st.cache_data.clear()  # clear cache
     st.rerun()
 
 # -----------------------------
-# นาฬิกา (แสดงเวลาตอนที่โหลดหน้าเว็บ)
+# Clock (Displays time when the page loads)
 # -----------------------------
 bangkok_now = datetime.datetime.now(pytz.utc).astimezone(bangkok_tz)
 st.markdown(
@@ -61,7 +61,7 @@ st.markdown(
 )
 
 # -----------------------------
-# แสดง dashboard ถ้ามีข้อมูล
+# Display dashboard if data exists
 # -----------------------------
 if not df.empty:
     for col in ["ชื่อ-สกุล", "แผนก", "ข้อยกเว้น"]:
@@ -86,13 +86,13 @@ if not df.empty:
     df_filtered = df.copy()
 
     st.markdown("### ตัวกรองข้อมูล")
-    # --- Filter ปี
+    # --- Filter by Year
     years = ["-- แสดงทั้งหมด --"] + sorted(df["ปี"].dropna().unique(), reverse=True)
     selected_year = st.selectbox("📆 เลือกปี", years)
     if selected_year != "-- แสดงทั้งหมด --":
         df_filtered = df_filtered[df_filtered["ปี"] == int(selected_year)]
 
-    # --- Filter เดือน
+    # --- Filter by Month
     if "เดือน" in df_filtered.columns and not df_filtered.empty:
         available_months = sorted(df_filtered["เดือน"].dropna().unique())
         month_options = ["-- แสดงทั้งหมด --"] + [format_thai_month(m) for m in available_months]
@@ -102,13 +102,13 @@ if not df.empty:
             selected_period = mapping[selected_month]
             df_filtered = df_filtered[df_filtered["เดือน"].astype(str) == selected_period]
 
-    # --- Filter แผนก
+    # --- Filter by Department
     departments = ["-- แสดงทั้งหมด --"] + sorted(df_filtered["แผนก"].dropna().unique())
     selected_dept = st.selectbox("🏢 เลือกแผนก", departments)
     if selected_dept != "-- แสดงทั้งหมด --":
         df_filtered = df_filtered[df_filtered["แผนก"] == selected_dept]
 
-    # --- คำนวณประเภทการลา
+    # --- Calculate leave types
     def leave_days(row):
         if "ครึ่งวัน" in str(row):
             return 0.5
@@ -176,8 +176,8 @@ if not df.empty:
 
                 if not dates.empty:
                     total_days = dates["ข้อยกเว้น"].apply(leave_days).sum()
-                    with st.expander(f"รายการวันที่ ({total_days} วัน)"):
-                        st.markdown("#### รายละเอียด")
+                    with st.expander("รายการวันที่"):
+                        st.markdown(f"**รวม {total_days} วัน**")
                         date_list = []
                         for _, row in dates.iterrows():
                             entry_time = row['เวลาเข้า'].strftime('%H:%M')
@@ -187,14 +187,14 @@ if not df.empty:
                             date_list.append(label)
                         st.write(date_list)
 
-            # ตารางอันดับ
+            # Ranking Table
             ranking = summary_filtered[["ชื่อ-สกุล", "แผนก", leave]].sort_values(by=leave, ascending=False).reset_index(drop=True)
             ranking.insert(0, "อันดับ", range(1, len(ranking)+1))
 
             st.markdown("### 🏅 ตารางอันดับ (ทุกคน)")
             st.dataframe(ranking, use_container_width=True)
 
-            # กราฟ
+            # Chart
             if not ranking.empty:
                 chart = (
                     alt.Chart(ranking)
