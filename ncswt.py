@@ -3,7 +3,7 @@ import pandas as pd
 import altair as alt
 import datetime
 import os
-import pytz  # สำหรับโซนเวลา
+import pytz
 
 st.set_page_config(page_title="HR Dashboard", layout="wide")
 
@@ -176,12 +176,13 @@ if not df.empty:
                 if not dates.empty:
                     total_days = dates["ข้อยกเว้น"].apply(leave_days).sum()
                     with st.expander(f"{leave} ({total_days} วัน)"):
+                        st.markdown("#### รายการวันที่")
                         date_list = []
                         for _, row in dates.iterrows():
                             entry_time = row['เวลาเข้า'].strftime('%H:%M')
                             exit_time = row['เวลาออก'].strftime('%H:%M')
                             
-                            label = f" {row['วันที่'].strftime('%d/%m/%Y')} {entry_time} - {exit_time} ({row['ข้อยกเว้น']})"
+                            label = f"{row['วันที่'].strftime('%d/%m/%Y')} {entry_time} - {exit_time} ({row['ข้อยกเว้น']})"
                             date_list.append(label)
                         st.write(date_list)
 
