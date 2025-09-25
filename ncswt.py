@@ -136,10 +136,8 @@ if not df.empty:
     selected_employee = st.selectbox(
         "🔍 ค้นหาชื่อพนักงาน",
         all_names,
-        index=all_names.index(st.session_state.selected_employee) if st.session_state.selected_employee in all_names else 0,
+        key='selected_employee',  # ใช้ key เพื่อจัดการ state ของ widget
     )
-    st.session_state.selected_employee = selected_employee
-
 
     colors = {
         "ลาป่วย/ลากิจ": "#FFC300",
@@ -184,8 +182,8 @@ if not df.empty:
                         for _, row in dates.iterrows():
                             entry_time = row['เวลาเข้า'].strftime('%H:%M')
                             exit_time = row['เวลาออก'].strftime('%H:%M')
-                            label = f"• {row['วันที่'].strftime('%d/%m/%Y')} (เวลา {entry_time} - {exit_time}) | ประเภท: {row['ข้อยกเว้น']}"
-                            st.markdown(label)
+                            label = f"• {row['วันที่'].strftime('%d/%m/%Y')} &nbsp;&nbsp; {entry_time} - {exit_time} &nbsp;&nbsp;&nbsp;&nbsp; {row['ข้อยกเว้น']}"
+                            st.markdown(label, unsafe_allow_html=True)
 
             # --- ตารางอันดับ (เหมือนต้นฉบับ) ---
             ranking = summary_filtered[["ชื่อ-สกุล", "แผนก", leave]].sort_values(by=leave, ascending=False).reset_index(drop=True)
