@@ -181,13 +181,11 @@ if not df.empty:
                 if not dates.empty:
                     total_days = dates["ข้อยกเว้น"].apply(leave_days).sum()
                     with st.expander(f"ดูรายละเอียดวันที่ {leave} ของ {selected_employee} (รวม {total_days} วัน)"):
-                        date_list = []
                         for _, row in dates.iterrows():
                             entry_time = row['เวลาเข้า'].strftime('%H:%M')
                             exit_time = row['เวลาออก'].strftime('%H:%M')
                             label = f"• {row['วันที่'].strftime('%d/%m/%Y')} (เวลา {entry_time} - {exit_time}) | ประเภท: {row['ข้อยกเว้น']}"
-                            date_list.append(label)
-                        st.markdown("\n".join(date_list))
+                            st.markdown(label)
 
             # --- ตารางอันดับ (เหมือนต้นฉบับ) ---
             ranking = summary_filtered[["ชื่อ-สกุล", "แผนก", leave]].sort_values(by=leave, ascending=False).reset_index(drop=True)
