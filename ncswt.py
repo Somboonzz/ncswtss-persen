@@ -56,7 +56,7 @@ if st.button("🔄 Refresh ข้อมูล (Manual)"):
 bangkok_now = datetime.datetime.now(pytz.utc).astimezone(bangkok_tz)
 st.markdown(
     f"<div style='text-align:right; font-size:50px; color:#FF5733; font-weight:bold;'>"
-    f"🗓 {thai_date(bangkok_now)}  |  ⏰ {bangkok_now.strftime('%H:%M:%S')}</div>",
+    f"🗓 {thai_date(bangkok_now)}  |  ⏰ {bangkok_now.strftime('%H:%M:%S')}</div>",
     unsafe_allow_html=True
 )
 
@@ -127,83 +127,79 @@ if not df.empty:
 
     st.title("📊 แดชบอร์ดการลา / ขาด / สาย")
 
-    colors = {lt: "#C70039" for lt in leave_types}
+    # --- ตัวกรองพนักงาน (ย้ายออกมานอกแท็บ) ---
+    all_names = ["-- แสดงทั้งหมด --"] + sorted(summary["ชื่อ-สกุล"].unique())
+    selected_employee = st.selectbox("🔍 ค้นหาชื่อพนักงาน (เพื่อดูรายละเอียด)", all_names)
 
-    if "selected_employee" not in st.session_state:
-        st.session_state.selected_employee = None
+    # --- แสดงข้อมูลสรุปของพนักงานที่เลือก ---
+    if selected_employee != "-- แสดงทั้งหมด --":
+        st.markdown("### 📌 สรุปข้อมูลส่วนบุคคล")
+        personal_summary = summary[summary["ชื่อ-สกุล"] == selected_employee]
+        st.dataframe(personal_summary, use_container_width=True)
+
+    colors = {
+        "ลาป่วย/ลากิจ": "#FFC300",
+        "ขาด": "#C70039",
+        "สาย": "#FF5733",
+        "พักผ่อน": "#33C4FF"
+    }
 
     tabs = st.tabs(leave_types)
     for t, leave in zip(tabs, leave_types):
         with t:
-            st.subheader(f"🏆 จัดอันดับ {leave}")
+            st.subheader(f"🏆 สถิติและอันดับ: {leave}")
 
-            all_names = summary["ชื่อ-สกุล"].unique()
-            default_name = st.session_state.selected_employee or "-- แสดงทั้งหมด --"
+            # --- แสดงรายละเอียดวันลาของพนักงานที่เลือก ---
+            if selected_employee != "-- แสดงทั้งหมด --":
+                person_data_full = df_filtered[df_filtered["ชื่อ-สกุล"] == selected_employee].reset_index(drop=True)
+                
+                if not person_data_full.empty:
+                    if leave == "ลาป่วย/ลากิจ":
+                        relevant_exceptions = ["ลาป่วย", "ลากิจ", "ลาป่วยครึ่งวัน", "ลากิจครึ่งวัน"]
+                    elif leave == "ขาด":
+                        relevant_exceptions = ["ขาด", "ขาดครึ่งวัน"]
+                    else:
+                        relevant_exceptions = [leave]
 
-            selected_name_tab = st.selectbox(
-                f"🔍 ค้นหาชื่อพนักงาน ({leave})",
-                ["-- แสดงทั้งหมด --"] + list(all_names),
-                index=(list(["-- แสดงทั้งหมด --"] + list(all_names)).index(default_name)
-                       if default_name in list(all_names) else 0),
-                key=f"search_{leave}"
-            )
+                    dates = person_data_full.loc[
+                        person_data_full["ข้อยกเว้น"].isin(relevant_exceptions), ["วันที่", "เวลาเข้า", "เวลาออก", "ข้อยกเว้น"]
+                    ]
 
-            if selected_name_tab != st.session_state.selected_employee:
-                st.session_state.selected_employee = selected_name_tab
+                    if not dates.empty:
+                        total_days = dates["ข้อยกเว้น"].apply(leave_days).sum()
+                        with st.expander(f"ดูรายละเอียดวันที่ {leave} ของ {selected_employee} (รวม {total_days} วัน)"):
+                            date_list = []
+                            for _, row in dates.iterrows():
+                                entry_time = row['เวลาเข้า'].strftime('%H:%M')
+                                exit_time = row['เวลาออก'].strftime('%H:%M')
+                                
+                                label = f"• {row['วันที่'].strftime('%d/%m/%Y')} (เวลา {entry_time} - {exit_time}) | ประเภท: {row['ข้อยกเว้น']}"
+                                date_list.append(label)
+                            st.markdown("\n".join(date_list))
 
-            if st.session_state.selected_employee != "-- แสดงทั้งหมด --":
-                summary_filtered = summary[summary["ชื่อ-สกุล"] == st.session_state.selected_employee].reset_index(drop=True)
-                person_data_full = df_filtered[df_filtered["ชื่อ-สกุล"] == st.session_state.selected_employee].reset_index(drop=True)
-            else:
-                summary_filtered = summary
-                person_data_full = df_filtered
+            # --- ตารางอันดับ (แสดงทุกคน) ---
+            ranking = summary[["ชื่อ-สกุล", "แผนก", leave]].sort_values(by=leave, ascending=False)
+            ranking_filtered = ranking[ranking[leave] > 0].reset_index(drop=True)
+            ranking_filtered.insert(0, "อันดับ", range(1, len(ranking_filtered) + 1))
 
-            st.markdown("### 📌 สรุปข้อมูลส่วนบุคคล")
-            st.dataframe(summary_filtered, use_container_width=True)
+            st.markdown("### 🏅 ตารางอันดับ")
+            st.dataframe(ranking_filtered, use_container_width=True)
 
-            if not person_data_full.empty:
-                if leave == "ลาป่วย/ลากิจ":
-                    relevant_exceptions = ["ลาป่วย", "ลากิจ", "ลาป่วยครึ่งวัน", "ลากิจครึ่งวัน"]
-                elif leave == "ขาด":
-                    relevant_exceptions = ["ขาด", "ขาดครึ่งวัน"]
-                else:
-                    relevant_exceptions = [leave]
-
-                dates = person_data_full.loc[
-                    person_data_full["ข้อยกเว้น"].isin(relevant_exceptions), ["วันที่", "เวลาเข้า", "เวลาออก", "ข้อยกเว้น"]
-                ]
-
-                if not dates.empty:
-                    total_days = dates["ข้อยกเว้น"].apply(leave_days).sum()
-                    with st.expander(f"{leave} ({total_days} วัน)"):
-                        date_list = []
-                        for _, row in dates.iterrows():
-                            entry_time = row['เวลาเข้า'].strftime('%H:%M')
-                            exit_time = row['เวลาออก'].strftime('%H:%M')
-                            
-                            label = f" {row['วันที่'].strftime('%d/%m/%Y')} {entry_time} - {exit_time} ({row['ข้อยกเว้น']})"
-                            date_list.append(label)
-                        st.write(date_list)
-
-            # ตารางอันดับ
-            ranking = summary_filtered[["ชื่อ-สกุล", "แผนก", leave]].sort_values(by=leave, ascending=False).reset_index(drop=True)
-            ranking.insert(0, "อันดับ", range(1, len(ranking)+1))
-
-            st.markdown("### 🏅 ตารางอันดับ (ทุกคน)")
-            st.dataframe(ranking, use_container_width=True)
-
-            # กราฟ
-            if not ranking.empty:
+            # --- กราฟ (แสดงทุกคน) ---
+            if not ranking_filtered.empty:
+                chart_data = ranking_filtered.head(20) # แสดงแค่ 20 อันดับแรก
                 chart = (
-                    alt.Chart(ranking)
-                    .mark_bar(cornerRadiusTopLeft=5, cornerRadiusBottomLeft=5, color=colors[leave])
+                    alt.Chart(chart_data)
+                    .mark_bar(cornerRadius=5, color=colors.get(leave, "#C70039"))
                     .encode(
+                        x=alt.X(leave + ":Q", title=f"จำนวน ({'วัน' if leave != 'สาย' else 'ครั้ง'})"),
                         y=alt.Y("ชื่อ-สกุล:N", sort="-x", title="ชื่อ-สกุล"),
-                        x=alt.X(leave + ":Q", title=leave),
                         tooltip=["อันดับ", "ชื่อ-สกุล", "แผนก", leave],
                     )
-                    .properties(width=800, height=500)
+                    .properties(title=f"20 อันดับแรกของพนักงานที่ '{leave}' บ่อยที่สุด")
                 )
                 st.altair_chart(chart, use_container_width=True)
             else:
-                st.info("ไม่มีข้อมูลให้แสดง")
+                st.info(f"ไม่พบข้อมูล '{leave}' ในช่วงเวลาที่เลือก")
+else:
+    st.info("กรุณาตรวจสอบว่ามีไฟล์ attendances.xlsx อยู่ในโฟลเดอร์เดียวกับโปรแกรม")

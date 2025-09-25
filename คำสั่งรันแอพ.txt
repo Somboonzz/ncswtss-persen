@@ -3,4 +3,3 @@ python ncswt.py
 git add .
 git push
 git pushall
-git push origin main
