@@ -1,2 +1,3 @@
-streamlit run ncswt.py
+streamlit run ncswtss.py
 python ncswtss.py
+git pushall
