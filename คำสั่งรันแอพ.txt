@@ -1,5 +1,2 @@
 streamlit run ncswt.py
-python ncswt.py
-git add .
-git push
-git pushall
+python ncswtss.py
