@@ -3,7 +3,7 @@ import pandas as pd
 import altair as alt
 import datetime
 import os
-import pytz # สำหรับโซนเวลา12365
+import pytz # สำหรับโซนเวลา
 
 # ----------------------------------------------------------------------------------
 # ตั้งค่าหน้า และ CSS
@@ -215,8 +215,7 @@ if not df.empty:
             df_filtered = df_filtered[df_filtered["แผนก"] == selected_dept]
     # -----------------------------------
 
-    # --- กรอง Summary (ใช้ merge แทนการคำนวณซ้ำ) ---
-    # หายอดรวมของ leave_types ในชุดข้อมูลที่ถูกกรอง
+    # --- คำนวณ summary ใหม่อีกครั้งหลังจากการกรอง ปี/เดือน/แผนก ---
     leave_types = ["ลาป่วย/ลากิจ", "ขาด", "สาย"]
     if not df_filtered.empty:
         summary_filtered = df_filtered.groupby(["ชื่อ-สกุล", "แผนก"])[leave_types].sum().reset_index()
@@ -233,9 +232,9 @@ if not df.empty:
 
     # --- สีกราฟ ---
     colors = {
-        "ลาป่วย/ลากิจ": "#FFC300", 
-        "ขาด": "#C70039", 
-        "สาย": "#FF5733", 
+        "ลาป่วย/ลากิจ": "#06BD1699", 
+        "ขาด": "#C40FE9", 
+        "สาย": "#0BCBEC", 
     }
 
     # ----------------------------------------------------------------------------------
@@ -259,7 +258,7 @@ if not df.empty:
             st.dataframe(current_summary_display, use_container_width=True, hide_index=True)
 
 
-            # --- แสดงรายละเอียดวันลา (เมื่อเลือกพนักงาน) - ปรับปรุงตามรูปภาพที่แนบมา ---
+            # --- แสดงรายละเอียดวันลา (เมื่อเลือกพนักงาน) ---
             if selected_employee != "-- แสดงทั้งหมด --" and not person_data_full.empty:
                 if leave == "ลาป่วย/ลากิจ":
                     relevant_exceptions = ["ลาป่วย", "ลากิจ", "ลาป่วยครึ่งวัน", "ลากิจครึ่งวัน"]
@@ -280,8 +279,6 @@ if not df.empty:
                 if not dates.empty:
                     with st.expander(f"ดูรายละเอียดวันที่ ({leave})"):
                         
-                        # **ลบส่วน Header ออกเพื่อให้เหมือนในรูป**
-                        
                         for _, row in dates.iterrows():
                             # การจัดการวันที่และเวลา
                             date_str = row['วันที่'].strftime('%d/%m/%Y')
@@ -290,16 +287,13 @@ if not df.empty:
                             entry_time_raw = row['เวลาเข้า']
                             exit_time_raw = row['เวลาออก']
                             
-                            # ตรวจสอบและแสดงผลเป็น 00:00 ถ้าเป็นการลาเต็มวัน
                             if exception_text in ["ลาป่วย", "ลากิจ", "ขาด"]:
                                 time_period = '00:00 - 00:00'
                             else:
-                                entry_time = entry_time_raw.strftime('%H:%M') if entry_time_raw is not None else '00:00' # เปลี่ยน '-' เป็น '00:00' ตามภาพ
-                                exit_time = exit_time_raw.strftime('%H:%M') if exit_time_raw is not None else '00:00' # เปลี่ยน '-' เป็น '00:00' ตามภาพ
+                                entry_time = entry_time_raw.strftime('%H:%M') if entry_time_raw is not None else '00:00'
+                                exit_time = exit_time_raw.strftime('%H:%M') if exit_time_raw is not None else '00:00'
                                 time_period = f"{entry_time} - {exit_time}"
                             
-                            # สร้างแถวแสดงผลด้วย Markdown (จัดระยะห่างด้วยช่องว่าง)
-                            # ใช้ความกว้างที่เหมาะสมเพื่อให้จัดเรียงตรงกัน 
                             label = (
                                 f"<div style='margin-bottom: 5px; font-size: 16px;'>"
                                 f"• {date_str}&nbsp;&nbsp;&nbsp;&nbsp;{time_period}&nbsp;&nbsp;&nbsp;&nbsp;{exception_text}"
@@ -307,21 +301,17 @@ if not df.empty:
                             )
                             st.markdown(label, unsafe_allow_html=True)
                             
-                        # แสดงเส้นคั่น
                         st.markdown("<hr>", unsafe_allow_html=True)
                         
-                        # แสดงยอดรวม (จัดชิดซ้าย/ขวาเล็กน้อยเพื่อให้ดูสวยงาม)
                         if leave == "สาย":
                             st.markdown(f"<div style='font-weight: bold; font-size: 16px; margin-top: 10px;'>ยอดรวม: {total_count} ครั้ง</div>", unsafe_allow_html=True)
                         else:
-                            st.markdown(f"<div style='font-weight: bold; font-size: 16px; margin-top: 10px;'>ยอดรวม: {total_days:.0f} วัน</div>", unsafe_allow_html=True) # เปลี่ยนเป็น .0f เพื่อให้ไม่มีทศนิยมถ้าเป็นจำนวนเต็มตามภาพ
-
+                            st.markdown(f"<div style='font-weight: bold; font-size: 16px; margin-top: 10px;'>ยอดรวม: {total_days:.0f} วัน</div>", unsafe_allow_html=True)
 
             # --- ตารางอันดับ ---
             ranking = current_summary_display[["ชื่อ-สกุล", "แผนก", leave]].sort_values(by=leave, ascending=False).reset_index(drop=True)
             ranking.insert(0, "อันดับ", range(1, len(ranking) + 1))
             
-            # ซ่อนแถวสุดท้ายของตารางอันดับ
             if not ranking.empty:
                 ranking = ranking.iloc[:-1]
                 
@@ -329,21 +319,32 @@ if not df.empty:
             st.dataframe(ranking, use_container_width=True, hide_index=True)
 
     # ----------------------------------------------------------------------------------
-    # Pie Chart
+    # Pie Chart (ส่วนที่ถูกแก้ไข)
     # ----------------------------------------------------------------------------------
     st.markdown("---")
-    st.subheader("🥧 สัดส่วนรวมการลา/ขาด/สาย (พร้อมชื่อ + เปอร์เซ็นต์)")
+    
+    # --- 1. เตรียมข้อมูลสำหรับ Pie Chart โดยอิงตามตัวกรองทั้งหมด ---
+    data_for_pie_chart = summary_filtered.copy()
+    pie_chart_title = "สัดส่วนภาพรวม Pie Chart" # หัวข้อเริ่มต้น
 
-    total_summary = summary_filtered[leave_types].sum().reset_index()
+    # ถ้ามีการเลือกพนักงาน ให้กรองข้อมูลและเปลี่ยนหัวข้อ
+    if selected_employee != "-- แสดงทั้งหมด --":
+        data_for_pie_chart = data_for_pie_chart[data_for_pie_chart["ชื่อ-สกุล"] == selected_employee]
+        pie_chart_title = f"สัดส่วนของ: {selected_employee}"
+
+    st.subheader(f"🥧 {pie_chart_title}")
+    
+    # --- 2. คำนวณยอดรวมจากข้อมูลที่กรองแล้ว ---
+    total_summary = data_for_pie_chart[leave_types].sum().reset_index()
     total_summary.columns = ['ประเภท', 'ยอดรวม']
     total_summary = total_summary[total_summary['ยอดรวม'] > 0].reset_index(drop=True)
 
+    # --- 3. สร้างกราฟ (เหมือนเดิม) ---
     if total_summary['ยอดรวม'].sum() > 0:
         total = total_summary['ยอดรวม'].sum()
         total_summary['Percentage'] = (total_summary['ยอดรวม'] / total * 100).round(1)
-        total_summary['label'] = total_summary.apply(lambda x: f"{x['ประเภท']} {x['Percentage']}%", axis=1)
+        total_summary['label'] = total_summary.apply(lambda x: f"{x['ประเภท']} ({x['Percentage']}%)", axis=1)
 
-        # 1. สร้าง base chart
         base = alt.Chart(total_summary).encode(
             theta=alt.Theta("ยอดรวม", stack=True),
             color=alt.Color(
@@ -358,13 +359,11 @@ if not df.empty:
             ]
         )
 
-        # 2. วงกลมหลัก
-        pie = base.mark_arc(outerRadius=170, innerRadius=60)
+        pie = base.mark_arc(outerRadius=150, innerRadius=60)
 
-        # 3. Text Label (ข้อความด้านนอก)
         text_labels = base.mark_text(
-            radius= 250, # ปรับค่า radius ให้มากขึ้น
-            size=15, 
+            radius= 230,
+            size=20, 
             fontWeight="bold",
         ).encode(
             text=alt.Text('label:N'),
@@ -372,38 +371,25 @@ if not df.empty:
             tooltip=alt.value(None)
         )
 
-        # 4. ข้อความตรงกลางวงกลม
-        center_text = alt.Chart(pd.DataFrame({'text': [f"รวม 100%"]})).mark_text(
+        center_text_val = "100%" if total > 0 else "0%"
+        center_text = alt.Chart(pd.DataFrame({'text': [f"รวม {center_text_val}"]})).mark_text(
             size=20, color='black', fontWeight='bold'
         ).encode(text='text:N')
 
-        # รวมทุกส่วน
         chart = pie + text_labels + center_text
         
         chart = chart.properties(
             width=500,
-            height=500,
-            title="สัดส่วนรวมการลา/ขาด/สาย"
+            height=500
         ).configure_legend(
             titleFontSize=14,
             labelFontSize=12
-        ).configure_title(
-            fontSize=18
         )
 
         st.altair_chart(chart, use_container_width=True)
 
-        # ตารางสรุป Pie Chart
-        # ซ่อนแถวสุดท้ายของตารางสรุป Pie Chart
-        if not total_summary.empty:
-            total_summary_display = total_summary.iloc[:-1]
-        else:
-            total_summary_display = total_summary
-            
-        st.dataframe(total_summary_display, use_container_width=True, hide_index=True)
-
     else:
-        st.info("ไม่พบข้อมูลการลา/ขาด/สายในช่วงเวลาที่เลือก")
+        st.info("ไม่พบข้อมูลเพื่อแสดงในแผนภูมิวงกลม ตามตัวกรองที่เลือก")
 
 else:
     st.info("กรุณาตรวจสอบว่ามีไฟล์ attendances.xlsx อยู่ในโฟลเดอร์เดียวกับโปรแกรม")
